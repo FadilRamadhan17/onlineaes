@@ -1,0 +1,48 @@
+.rubik-mono-one-regular {
+  font-family: "Rubik Mono One", serif;
+  font-weight: 400;
+  font-style: normal;
+}
+
+.poppins-regular {
+  font-family: "Courier New", Courier, monospace;
+  font-weight: 400;
+  font-style: normal;
+}
+
+.btn-no-bg {
+  background-color: transparent;
+  border: 2px solid white;
+  color: white;
+  padding: 10px 30px;
+  font-size: 16px;
+  cursor: pointer;
+  border-radius: 5px;
+}
+
+.btn-no-bg:hover {
+  background-color: white;
+  color: black;
+}
+
+.security {
+  font-size: 90px;
+}
+
+.what {
+  font-size: 70px;
+}
+
+.btn-e-d {
+  padding: 10px 30px;
+  font-size: 30px;
+}
+
+.bg-card {
+  background-color: #6531df;
+}
+
+.error {
+  font-size: 20px;
+  color: white;
+}

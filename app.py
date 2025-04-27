@@ -1,0 +1,219 @@
+from flask import Flask, render_template, request, send_file
+from werkzeug.utils import secure_filename
+import os
+import base64
+import re
+
+from aes import AES
+from file import FileHandler
+
+app = Flask(__name__)
+
+PLAINTEXT_FOLDER = 'plaintext_files'
+CIPHERTEXT_FOLDER = 'ciphertext_files'
+
+os.makedirs(PLAINTEXT_FOLDER, exist_ok=True)
+os.makedirs(CIPHERTEXT_FOLDER, exist_ok=True)
+
+def validate_key(key):
+    return len(key) == 16
+
+def read_uploaded_file(uploaded_file):
+    filename = secure_filename(uploaded_file.filename)
+    extension = FileHandler.get_file_extension(filename)
+
+    if extension == ".pdf": 
+        content = FileHandler.read_pdf(uploaded_file)
+    elif extension == ".docx":
+        content = FileHandler.read_docx(uploaded_file)
+    else:
+        content = uploaded_file.read().decode('utf-8')
+
+    return content, filename, extension
+
+def save_output_file(content, base_filename, extension, is_encryption):
+    if is_encryption:
+        filename = "ciphertext.txt" if extension in [".pdf", ".docx"] else f"{base_filename}_encrypted{extension}"
+        folder = CIPHERTEXT_FOLDER
+    else:
+        filename = f"{base_filename}_decrypted{extension}"
+        folder = PLAINTEXT_FOLDER
+
+    path = os.path.join(folder, filename)
+
+    if extension == ".pdf" and not is_encryption:
+        FileHandler.save_pdf(content, path)
+    elif extension == ".docx" and not is_encryption:
+        FileHandler.save_docx(content, path)
+    else:
+        with open(path, 'w', encoding='utf-8') as f:
+            f.write(content)
+
+    return path
+
+def detect_and_convert_format(content):
+    content = "".join(content.split())
+    
+    if re.match(r'^[0-9a-fA-F]+$', content):
+        try:
+            return bytes.fromhex(content), "hex"
+        except Exception:
+            pass
+    try:
+        if re.match(r'^[A-Za-z0-9+/]+={0,2}$', content):
+            return base64.b64decode(content), "base64"
+    except Exception:
+        pass
+    try:
+        return base64.b64decode(content), "base64"
+    except Exception:
+        pass
+    
+    return None, None
+
+@app.route('/')
+def landing():
+    return render_template('landing.html')
+
+@app.route('/explore')
+def explore():
+    return render_template('explore.html')
+
+@app.route('/enkripsi')
+def enkripsi():
+    return render_template('enkripsi.html')
+
+@app.route('/dekripsi')
+def dekripsi():
+    return render_template('dekripsi.html')
+
+@app.route('/encrypt', methods=['POST'])
+def encrypt():
+    key = request.form['key']
+    if not validate_key(key):
+        return "Key must be 16 bytes long.", 400
+
+    try:
+        input_type = request.form['input_type']
+        output_type = request.form['output_type']
+        aes = AES(key)
+
+        if input_type == 'file':
+            uploaded_file = request.files.get('file_plaintext')
+            if not uploaded_file or uploaded_file.filename == '':
+                return "No file uploaded.", 400
+
+            content, filename, extension = read_uploaded_file(uploaded_file)
+            cipher = aes.encrypt(content)
+            hex_string = cipher.hex()
+
+            if output_type == 'char':
+                cipher = base64.b64encode(bytes.fromhex(hex_string)).decode('utf-8')
+            else:
+                cipher = hex_string
+
+            output_path = save_output_file(cipher, os.path.splitext(filename)[0], extension, is_encryption=True)
+
+            return render_template('enkripsi.html',
+                                   input=input_type,
+                                   key=key,
+                                   uploaded_file=uploaded_file,
+                                   output=output_type,
+                                   ciphertext_file=os.path.basename(output_path))
+
+        elif input_type == 'text':
+            plaintext = request.form['plaintext']
+            if not plaintext:
+                return "No text provided.", 400
+
+            cipher = aes.encrypt(plaintext)
+            hex_string = cipher.hex()
+
+            if output_type == 'char':
+                cipher = base64.b64encode(bytes.fromhex(hex_string)).decode('utf-8')
+            else:
+                cipher = hex_string
+
+            return render_template('enkripsi.html',
+                                   input=input_type,
+                                   plaintext=plaintext,
+                                   ciphertext=cipher,
+                                   key=key)
+        else:
+            return "Invalid input type.", 400
+
+    except Exception as e:
+        return render_template('error.html', error=f"Error during encryption: {str(e)}"), 500
+
+@app.route('/decrypt', methods=['POST'])
+def decrypt():
+    key = request.form['key']
+    if not validate_key(key):
+        return "Key must be 16 bytes long.", 400
+
+    try:
+        input_type = request.form['input_type']
+        aes = AES(key)
+
+        if input_type == 'file':
+            uploaded_file = request.files.get('file_ciphertext')
+            if not uploaded_file or uploaded_file.filename == '':
+                return "No file uploaded.", 400
+
+            content, filename, extension = read_uploaded_file(uploaded_file)
+            content = content.strip()
+            
+            ciphertext_bytes, detected_format = detect_and_convert_format(content)
+            if not ciphertext_bytes:
+                return "Invalid ciphertext format. Please provide valid hex or base64 input.", 400
+
+            plaintext = aes.decrypt(ciphertext_bytes)
+
+            output_path = save_output_file(plaintext.decode('utf-8'), os.path.splitext(filename)[0], extension, is_encryption=False)
+
+            return render_template('dekripsi.html',
+                                  input=input_type,
+                                  key=key,
+                                  uploaded_file=uploaded_file,
+                                  plaintext_file=os.path.basename(output_path),
+                                  detected_format=detected_format)
+
+        elif input_type == 'text':
+            ciphertext = request.form['text_ciphertext'].strip()
+            ciphertext_bytes, detected_format = detect_and_convert_format(ciphertext)
+            if not ciphertext_bytes:
+                return "Invalid ciphertext format. Please provide valid hex or base64 input.", 400
+
+            plaintext = aes.decrypt(ciphertext_bytes)
+
+            return render_template('dekripsi.html',
+                                  input=input_type,
+                                  plaintext=plaintext.decode('utf-8'),
+                                  key=key,
+                                  detected_format=detected_format)
+
+        else:
+            return "Invalid input type.", 400
+
+    except Exception as e:
+        return render_template('error.html', error=f"Error during decryption: {str(e)}"), 500
+
+@app.route('/download/<folder>/<filename>')
+def download_file(folder, filename):
+    folder_path = CIPHERTEXT_FOLDER if folder == 'ciphertext' else PLAINTEXT_FOLDER if folder == 'plaintext' else None
+
+    if not folder_path:
+        return "Invalid folder.", 400
+
+    file_path = os.path.join(folder_path, filename)
+
+    if not os.path.exists(file_path):
+        return "File not found.", 404
+
+    try:
+        return send_file(file_path, as_attachment=True, download_name=filename)
+    except Exception as e:
+        return f"Error downloading file: {str(e)}", 500
+
+if __name__ == '__main__':
+    app.run(debug=True)
