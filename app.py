@@ -3,6 +3,7 @@ from werkzeug.utils import secure_filename
 import os
 import base64
 import re
+from io import BytesIO
 
 from aes import AES
 from file import FileHandler
@@ -12,8 +13,8 @@ app = Flask(__name__)
 PLAINTEXT_FOLDER = 'plaintext_files'
 CIPHERTEXT_FOLDER = 'ciphertext_files'
 
-os.makedirs(PLAINTEXT_FOLDER, exist_ok=True)
-os.makedirs(CIPHERTEXT_FOLDER, exist_ok=True)
+# os.makedirs(PLAINTEXT_FOLDER, exist_ok=True)
+# os.makedirs(CIPHERTEXT_FOLDER, exist_ok=True)
 
 def validate_key(key):
     return len(key) == 16
@@ -31,25 +32,25 @@ def read_uploaded_file(uploaded_file):
 
     return content, filename, extension
 
-def save_output_file(content, base_filename, extension, is_encryption):
-    if is_encryption:
-        filename = "ciphertext.txt" if extension in [".pdf", ".docx"] else f"{base_filename}_encrypted{extension}"
-        folder = CIPHERTEXT_FOLDER
-    else:
-        filename = f"{base_filename}_decrypted{extension}"
-        folder = PLAINTEXT_FOLDER
+# def save_output_file(content, base_filename, extension, is_encryption):
+#     if is_encryption:
+#         filename = "ciphertext.txt" if extension in [".pdf", ".docx"] else f"{base_filename}_encrypted{extension}"
+#         folder = CIPHERTEXT_FOLDER
+#     else:
+#         filename = f"{base_filename}_decrypted{extension}"
+#         folder = PLAINTEXT_FOLDER
 
-    path = os.path.join(folder, filename)
+#     path = os.path.join(folder, filename)
 
-    if extension == ".pdf" and not is_encryption:
-        FileHandler.save_pdf(content, path)
-    elif extension == ".docx" and not is_encryption:
-        FileHandler.save_docx(content, path)
-    else:
-        with open(path, 'w', encoding='utf-8') as f:
-            f.write(content)
+#     if extension == ".pdf" and not is_encryption:
+#         FileHandler.save_pdf(content, path)
+#     elif extension == ".docx" and not is_encryption:
+#         FileHandler.save_docx(content, path)
+#     else:
+#         with open(path, 'w', encoding='utf-8') as f:
+#             f.write(content)
 
-    return path
+#     return path
 
 def detect_and_convert_format(content):
     content = "".join(content.split())
@@ -112,14 +113,27 @@ def encrypt():
             else:
                 cipher = hex_string
 
-            output_path = save_output_file(cipher, os.path.splitext(filename)[0], extension, is_encryption=True)
+            # output_path = save_output_file(cipher, os.path.splitext(filename)[0], extension, is_encryption=True)
 
-            return render_template('enkripsi.html',
-                                   input=input_type,
-                                   key=key,
-                                   uploaded_file=uploaded_file,
-                                   output=output_type,
-                                   ciphertext_file=os.path.basename(output_path))
+            # return render_template('enkripsi.html',
+            #                        input=input_type,
+            #                        key=key,
+            #                        uploaded_file=uploaded_file,
+            #                        output=output_type,
+            #                        ciphertext_file=os.path.basename(output_path))
+
+            output_stream = BytesIO()
+            output_stream.write(cipher.encode('utf-8'))
+            output_stream.seek(0)
+
+            download_filename = f"{os.path.splitext(filename)[0]}_encrypted{extension if extension not in ['.pdf', '.docx'] else '.txt'}"
+
+            return send_file(
+                output_stream,
+                as_attachment=True,
+                download_name=download_filename,
+                mimetype="application/octet-stream"
+            )
 
         elif input_type == 'text':
             plaintext = request.form['plaintext']
@@ -169,14 +183,27 @@ def decrypt():
 
             plaintext = aes.decrypt(ciphertext_bytes)
 
-            output_path = save_output_file(plaintext.decode('utf-8'), os.path.splitext(filename)[0], extension, is_encryption=False)
+            # output_path = save_output_file(plaintext.decode('utf-8'), os.path.splitext(filename)[0], extension, is_encryption=False)
 
-            return render_template('dekripsi.html',
-                                  input=input_type,
-                                  key=key,
-                                  uploaded_file=uploaded_file,
-                                  plaintext_file=os.path.basename(output_path),
-                                  detected_format=detected_format)
+            # return render_template('dekripsi.html',
+            #                       input=input_type,
+            #                       key=key,
+            #                       uploaded_file=uploaded_file,
+            #                       plaintext_file=os.path.basename(output_path),
+            #                       detected_format=detected_format)
+
+            output_stream = BytesIO()
+            output_stream.write(plaintext)
+            output_stream.seek(0)
+
+            download_filename = f"{os.path.splitext(filename)[0]}_decrypted{extension if extension not in ['.pdf', '.docx'] else '.txt'}"
+
+            return send_file(
+                output_stream,
+                as_attachment=True,
+                download_name=download_filename,
+                mimetype="application/octet-stream"
+            )
 
         elif input_type == 'text':
             ciphertext = request.form['text_ciphertext'].strip()
@@ -198,22 +225,22 @@ def decrypt():
     except Exception as e:
         return render_template('error.html', error=f"Error during decryption: {str(e)}"), 500
 
-@app.route('/download/<folder>/<filename>')
-def download_file(folder, filename):
-    folder_path = CIPHERTEXT_FOLDER if folder == 'ciphertext' else PLAINTEXT_FOLDER if folder == 'plaintext' else None
+# @app.route('/download/<folder>/<filename>')
+# def download_file(folder, filename):
+#     folder_path = CIPHERTEXT_FOLDER if folder == 'ciphertext' else PLAINTEXT_FOLDER if folder == 'plaintext' else None
 
-    if not folder_path:
-        return "Invalid folder.", 400
+#     if not folder_path:
+#         return "Invalid folder.", 400
 
-    file_path = os.path.join(folder_path, filename)
+#     file_path = os.path.join(folder_path, filename)
 
-    if not os.path.exists(file_path):
-        return "File not found.", 404
+#     if not os.path.exists(file_path):
+#         return "File not found.", 404
 
-    try:
-        return send_file(file_path, as_attachment=True, download_name=filename)
-    except Exception as e:
-        return f"Error downloading file: {str(e)}", 500
+#     try:
+#         return send_file(file_path, as_attachment=True, download_name=filename)
+#     except Exception as e:
+#         return f"Error downloading file: {str(e)}", 500
 
 if __name__ == '__main__':
     app.run(debug=True)
