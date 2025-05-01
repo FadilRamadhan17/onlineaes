@@ -4,7 +4,6 @@ import os
 import base64
 import re
 from io import BytesIO
-
 from aes import AES
 from file import FileHandler
 
