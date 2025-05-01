@@ -12,9 +12,6 @@ app = Flask(__name__)
 PLAINTEXT_FOLDER = 'plaintext_files'
 CIPHERTEXT_FOLDER = 'ciphertext_files'
 
-# os.makedirs(PLAINTEXT_FOLDER, exist_ok=True)
-# os.makedirs(CIPHERTEXT_FOLDER, exist_ok=True)
-
 def validate_key(key):
     return len(key) == 16
 
@@ -30,26 +27,6 @@ def read_uploaded_file(uploaded_file):
         content = uploaded_file.read().decode('utf-8')
 
     return content, filename, extension
-
-# def save_output_file(content, base_filename, extension, is_encryption):
-#     if is_encryption:
-#         filename = "ciphertext.txt" if extension in [".pdf", ".docx"] else f"{base_filename}_encrypted{extension}"
-#         folder = CIPHERTEXT_FOLDER
-#     else:
-#         filename = f"{base_filename}_decrypted{extension}"
-#         folder = PLAINTEXT_FOLDER
-
-#     path = os.path.join(folder, filename)
-
-#     if extension == ".pdf" and not is_encryption:
-#         FileHandler.save_pdf(content, path)
-#     elif extension == ".docx" and not is_encryption:
-#         FileHandler.save_docx(content, path)
-#     else:
-#         with open(path, 'w', encoding='utf-8') as f:
-#             f.write(content)
-
-#     return path
 
 def detect_and_convert_format(content):
     content = "".join(content.split())
@@ -112,15 +89,6 @@ def encrypt():
             else:
                 cipher = hex_string
 
-            # output_path = save_output_file(cipher, os.path.splitext(filename)[0], extension, is_encryption=True)
-
-            # return render_template('enkripsi.html',
-            #                        input=input_type,
-            #                        key=key,
-            #                        uploaded_file=uploaded_file,
-            #                        output=output_type,
-            #                        ciphertext_file=os.path.basename(output_path))
-
             output_stream = BytesIO()
             output_stream.write(cipher.encode('utf-8'))
             output_stream.seek(0)
@@ -182,15 +150,6 @@ def decrypt():
 
             plaintext = aes.decrypt(ciphertext_bytes)
 
-            # output_path = save_output_file(plaintext.decode('utf-8'), os.path.splitext(filename)[0], extension, is_encryption=False)
-
-            # return render_template('dekripsi.html',
-            #                       input=input_type,
-            #                       key=key,
-            #                       uploaded_file=uploaded_file,
-            #                       plaintext_file=os.path.basename(output_path),
-            #                       detected_format=detected_format)
-
             output_stream = BytesIO()
             output_stream.write(plaintext)
             output_stream.seek(0)
@@ -224,23 +183,6 @@ def decrypt():
 
     except Exception as e:
         return render_template('error.html', error=f"Error during decryption: {str(e)}"), 500
-
-# @app.route('/download/<folder>/<filename>')
-# def download_file(folder, filename):
-#     folder_path = CIPHERTEXT_FOLDER if folder == 'ciphertext' else PLAINTEXT_FOLDER if folder == 'plaintext' else None
-
-#     if not folder_path:
-#         return "Invalid folder.", 400
-
-#     file_path = os.path.join(folder_path, filename)
-
-#     if not os.path.exists(file_path):
-#         return "File not found.", 404
-
-#     try:
-#         return send_file(file_path, as_attachment=True, download_name=filename)
-#     except Exception as e:
-#         return f"Error downloading file: {str(e)}", 500
 
 if __name__ == '__main__':
     app.run(debug=True)
