@@ -92,7 +92,7 @@ def dekripsi():
 def encrypt():
     key = request.form['key']
     if not validate_key(key):
-        return "Key must be 16 bytes long.", 400
+        return render_template('error.html', error=f"Panjang kunci harus 16 byte."), 400
 
     try:
         input_type = request.form['input_type']
@@ -102,7 +102,7 @@ def encrypt():
         if input_type == 'file':
             uploaded_file = request.files.get('file_plaintext')
             if not uploaded_file or uploaded_file.filename == '':
-                return "No file uploaded.", 400
+                return render_template('error.html', error=f"Tidak ada file yang diunggah."), 400
 
             content, filename, extension = read_uploaded_file(uploaded_file)
             cipher = aes.encrypt(content)
@@ -138,7 +138,7 @@ def encrypt():
         elif input_type == 'text':
             plaintext = request.form['plaintext']
             if not plaintext:
-                return "No text provided.", 400
+                return render_template('error.html', error=f"Tidak ada teks yang dimasukkan."), 400
 
             cipher = aes.encrypt(plaintext)
             hex_string = cipher.hex()
@@ -154,7 +154,7 @@ def encrypt():
                                    ciphertext=cipher,
                                    key=key)
         else:
-            return "Invalid input type.", 400
+            return render_template('error.html', error=f"Jenis input tidak valid."), 400
 
     except Exception as e:
         return render_template('error.html', error=f"Error during encryption: {str(e)}"), 500
@@ -163,7 +163,7 @@ def encrypt():
 def decrypt():
     key = request.form['key']
     if not validate_key(key):
-        return "Key must be 16 bytes long.", 400
+        return render_template('error.html', error=f"Panjang kunci harus 16 byte."), 400
 
     try:
         input_type = request.form['input_type']
@@ -172,14 +172,14 @@ def decrypt():
         if input_type == 'file':
             uploaded_file = request.files.get('file_ciphertext')
             if not uploaded_file or uploaded_file.filename == '':
-                return "No file uploaded.", 400
+                return render_template('error.html', error=f"Tidak ada file yang diunggah."), 400
 
             content, filename, extension = read_uploaded_file(uploaded_file)
             content = content.strip()
             
             ciphertext_bytes, detected_format = detect_and_convert_format(content)
             if not ciphertext_bytes:
-                return "Invalid ciphertext format. Please provide valid hex or base64 input.", 400
+                return render_template('error.html', error=f"Format ciphertext tidak valid. Berikan input hex atau base64 yang valid."), 400
 
             plaintext = aes.decrypt(ciphertext_bytes)
 
@@ -209,18 +209,19 @@ def decrypt():
             ciphertext = request.form['text_ciphertext'].strip()
             ciphertext_bytes, detected_format = detect_and_convert_format(ciphertext)
             if not ciphertext_bytes:
-                return "Invalid ciphertext format. Please provide valid hex or base64 input.", 400
+                return render_template('error.html', error=f"Format ciphertext tidak valid. Berikan input hex atau base64 yang valid."), 400
 
             plaintext = aes.decrypt(ciphertext_bytes)
 
             return render_template('dekripsi.html',
                                   input=input_type,
+                                  ciphertext=ciphertext,
                                   plaintext=plaintext.decode('utf-8'),
                                   key=key,
                                   detected_format=detected_format)
 
         else:
-            return "Invalid input type.", 400
+            return render_template('error.html', error=f"Jenis input tidak valid."), 400
 
     except Exception as e:
         return render_template('error.html', error=f"Error during decryption: {str(e)}"), 500
