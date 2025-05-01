@@ -9,9 +9,6 @@ from file import FileHandler
 
 app = Flask(__name__)
 
-PLAINTEXT_FOLDER = 'plaintext_files'
-CIPHERTEXT_FOLDER = 'ciphertext_files'
-
 def validate_key(key):
     return len(key) == 16
 

@@ -1,12 +1,6 @@
 import os
-from PyPDF2 import PdfReader, PdfWriter
+from PyPDF2 import PdfReader
 from docx import Document
-from io import BytesIO
-from reportlab.pdfgen import canvas
-from reportlab.lib.pagesizes import letter
-
-PLAINTEXT_FOLDER = 'plaintext_files'
-CIPHERTEXT_FOLDER = 'ciphertext_files'
 
 class FileHandler:
     @staticmethod
