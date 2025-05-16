@@ -59,9 +59,14 @@ def aes():
 
 @app.route('/encrypt', methods=['POST'])
 def encrypt():
-    key = request.form['key']
-    if not validate_key(key):
-        return render_template('error.html', error=f"Panjang kunci harus 16 byte."), 400
+    key = request.form['key'].encode()  # Ubah ke bytes
+
+    if len(key) > 16:
+        return render_template('error.html', error="Panjang kunci tidak boleh lebih dari 16 byte."), 400
+    elif len(key) < 16:
+        key = key.ljust(16, b'\0')  # Tambah padding null byte
+
+    key = key.decode('utf-8')  # Ubah kembali ke string
 
     try:
         input_type = request.form['input_type']
@@ -108,12 +113,15 @@ def encrypt():
             else:
                 cipher = hex_string
 
+            key = key.encode()
+            key_display = key.decode('utf-8').rstrip('\x00')
+            
             return render_template('aes.html',
                                    input=input_type,
                                    output=output_type,
                                    plaintext=plaintext,
                                    ciphertext=cipher,
-                                   key=key)
+                                   key=key_display)
         else:
             return render_template('error.html', error=f"Jenis input tidak valid."), 400
 
@@ -122,9 +130,14 @@ def encrypt():
 
 @app.route('/decrypt', methods=['POST'])
 def decrypt():
-    key = request.form['key1']
-    if not validate_key(key):
-        return render_template('error.html', error=f"Panjang kunci harus 16 byte."), 400
+    key = request.form['key1'].encode()  # Ubah ke bytes
+
+    if len(key) > 16:
+        return render_template('error.html', error="Panjang kunci tidak boleh lebih dari 16 byte."), 400
+    elif len(key) < 16:
+        key = key.ljust(16, b'\0')  # Tambah padding null byte
+
+    key = key.decode('utf-8')  # Ubah kembali ke string
 
     try:
         input_type = request.form['input_type1']
@@ -165,11 +178,14 @@ def decrypt():
 
             plaintext = aes.decrypt(ciphertext_bytes)
 
+            key = key.encode()
+            key_display = key.decode('utf-8').rstrip('\x00')
+
             return render_template('aes.html',
                                   input1=input_type,
                                   ciphertext1=ciphertext,
                                   plaintext1=plaintext.decode('utf-8'),
-                                  key1=key,
+                                  key1=key_display,
                                   detected_format=detected_format)
 
         else:
