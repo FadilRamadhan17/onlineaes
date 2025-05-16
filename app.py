@@ -53,13 +53,9 @@ def landing():
 def explore():
     return render_template('explore.html')
 
-@app.route('/enkripsi')
-def enkripsi():
-    return render_template('enkripsi.html')
-
-@app.route('/dekripsi')
-def dekripsi():
-    return render_template('dekripsi.html')
+@app.route('/aes')
+def aes():
+    return render_template('aes.html')
 
 @app.route('/encrypt', methods=['POST'])
 def encrypt():
@@ -112,8 +108,9 @@ def encrypt():
             else:
                 cipher = hex_string
 
-            return render_template('enkripsi.html',
+            return render_template('aes.html',
                                    input=input_type,
+                                   output=output_type,
                                    plaintext=plaintext,
                                    ciphertext=cipher,
                                    key=key)
@@ -125,16 +122,16 @@ def encrypt():
 
 @app.route('/decrypt', methods=['POST'])
 def decrypt():
-    key = request.form['key']
+    key = request.form['key1']
     if not validate_key(key):
         return render_template('error.html', error=f"Panjang kunci harus 16 byte."), 400
 
     try:
-        input_type = request.form['input_type']
+        input_type = request.form['input_type1']
         aes = AES(key)
 
         if input_type == 'file':
-            uploaded_file = request.files.get('file_ciphertext')
+            uploaded_file = request.files.get('file_ciphertext1')
             if not uploaded_file or uploaded_file.filename == '':
                 return render_template('error.html', error=f"Tidak ada file yang diunggah."), 400
 
@@ -161,18 +158,18 @@ def decrypt():
             )
 
         elif input_type == 'text':
-            ciphertext = request.form['text_ciphertext'].strip()
+            ciphertext = request.form['text_ciphertext1'].strip()
             ciphertext_bytes, detected_format = detect_and_convert_format(ciphertext)
             if not ciphertext_bytes:
                 return render_template('error.html', error=f"Format ciphertext tidak valid. Berikan input hex atau base64 yang valid."), 400
 
             plaintext = aes.decrypt(ciphertext_bytes)
 
-            return render_template('dekripsi.html',
-                                  input=input_type,
-                                  ciphertext=ciphertext,
-                                  plaintext=plaintext.decode('utf-8'),
-                                  key=key,
+            return render_template('aes.html',
+                                  input1=input_type,
+                                  ciphertext1=ciphertext,
+                                  plaintext1=plaintext.decode('utf-8'),
+                                  key1=key,
                                   detected_format=detected_format)
 
         else:
