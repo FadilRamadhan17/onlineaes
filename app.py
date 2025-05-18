@@ -1,5 +1,4 @@
 import os
-import time
 import base64
 from io import BytesIO
 from flask import Flask, request, render_template, send_file
