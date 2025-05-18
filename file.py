@@ -1,15 +1,18 @@
 import os
 from PyPDF2 import PdfReader
 from docx import Document
+import pdfplumber
 
 class FileHandler:
     @staticmethod
     def read_pdf(file):
-        """Read content from PDF file"""
-        reader = PdfReader(file)
+        """Extract text from PDF using pdfplumber, preserve better layout"""
         text = ""
-        for page in reader.pages:
-            text += page.extract_text() + "\n"
+        with pdfplumber.open(file) as pdf:
+            for i, page in enumerate(pdf.pages):
+                page_text = page.extract_text()
+                if page_text:
+                    text += f"--- Halaman {i+1} ---\n{page_text.strip()}\n\n"
         return text
 
     @staticmethod
