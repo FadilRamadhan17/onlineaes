@@ -1,5 +1,4 @@
 import os
-from PyPDF2 import PdfReader
 from docx import Document
 import pdfplumber
 
